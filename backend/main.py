@@ -1,17 +1,18 @@
+import os
 from fastapi import FastAPI
-from app.api.routes.api import router as api_router
+from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.routes.api import router as api_router
+
+def cors_origins():
+    raw = settings.CORS_ORIGINS
+    return [o.strip() for o in raw.split(",") if o.strip()]
 
 app = FastAPI(title="RoadBuddy")
 
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

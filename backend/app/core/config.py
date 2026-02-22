@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SUPABASE_URL: str  
     SUPABASE_JWT_AUDIENCE: str = "authenticated"
-
+    CORS_ORIGINS:str
     @property
     def SUPABASE_JWT_ISSUER(self) -> str:
         return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1"
