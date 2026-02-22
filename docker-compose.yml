@@ -1,0 +1,14 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: roadbuddy-backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
