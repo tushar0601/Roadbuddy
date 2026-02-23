@@ -12,7 +12,8 @@ import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AuthGuard } from "@/components/auth/AuthGuard";
-import { supabase } from "@/lib/supabaseClient";
+import { useNotificationsPolling } from "@/hooks/useNotificationsPolling";
+import { ProfileMenu } from "@/components/dashboard/profileMenu";
 
 export default function DashboardPage() {
   const { token, signOut } = useAuth();
@@ -26,42 +27,45 @@ export default function DashboardPage() {
     if (!token) router.push("/signin");
   }, [token, router]);
 
-  const refresh = useCallback(async () => {
+  const handleNotifError = useCallback(
+    (e: any) => {
+      const msg = e?.message || "";
+      if (msg.includes("401")) signOut();
+    },
+    [signOut],
+  );
+
+  const { tick: fetchNotificationsOnce } = useNotificationsPolling({
+    enabled: !!token,
+    intervalMs: 12000,
+    onData: setNotifications,
+    onError: handleNotifError,
+  });
+
+  const fetchVehiclesOnce = useCallback(async () => {
     try {
-      const [v, n] = await Promise.all([
-        apiJson<Vehicle[]>("/vehicles"),
-        apiJson<Notification[]>("/notification/me"),
-      ]);
+      const v = await apiJson<Vehicle[]>("/vehicles");
       setVehicles(v);
-      setNotifications(n);
     } catch (e: any) {
-      const msg = e?.message || "Failed to load dashboard";
+      const msg = e?.message || "Failed to load vehicles";
       if (msg.includes("401")) signOut();
       toast.error(msg);
     }
   }, [signOut]);
 
   useEffect(() => {
-    if (token) {
-      // If React Compiler still complains, defer one tick:
-      queueMicrotask(() => refresh());
-    }
-  }, [token, refresh]);
+    if (!token) return;
 
-  function useLogout() {
-    const { setToken } = useAuth();
-    const router = useRouter();
+    void (async () => {
+      await fetchVehiclesOnce();
+      await fetchNotificationsOnce();
+    })();
+  }, [token, fetchVehiclesOnce, fetchNotificationsOnce]);
 
-    async function logout() {
-      await supabase.auth.signOut();
+  const refresh = useCallback(async () => {
+    await Promise.all([fetchVehiclesOnce(), fetchNotificationsOnce()]);
+  }, [fetchVehiclesOnce, fetchNotificationsOnce]);
 
-      setToken(null);
-
-      router.replace("/signin");
-    }
-
-    return logout;
-  }
   return (
     <AuthGuard>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -72,11 +76,13 @@ export default function DashboardPage() {
               Your vehicles & notifications
             </p>
           </div>
-          <div className="flex gap-2">
+
+          <div className="flex gap-2 items-center">
             <Button variant="outline" onClick={refresh}>
               Refresh
             </Button>
             <Button onClick={() => setOpenAdd(true)}>Add vehicle</Button>
+            <ProfileMenu />
           </div>
         </div>
 
@@ -88,9 +94,9 @@ export default function DashboardPage() {
         <AddVehicleDialog
           open={openAdd}
           onOpenChange={setOpenAdd}
-          onCreated={(newVehicle) => {
-            setVehicles((prev) => [newVehicle, ...prev]);
-          }}
+          onCreated={(newVehicle) =>
+            setVehicles((prev) => [newVehicle, ...prev])
+          }
         />
       </div>
     </AuthGuard>

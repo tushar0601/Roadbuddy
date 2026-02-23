@@ -5,7 +5,7 @@ from app.domain.notification.schema import NotificationOut, NotifyOwnerIn
 from app.domain.vehicle.model import Vehicle
 from app.service.notification_service import NotificationService
 from app.service.vehicle_service import VehicleService
-from app.domain.user.model import User
+from app.domain.profile.model import Profile
 
 router = APIRouter()
 
@@ -40,6 +40,6 @@ def notify_vehicle_owner(
 @router.get("/me", response_model=list[NotificationOut])
 def get_my_notifications(
     notification_service: NotificationService = Depends(get_notification_service),
-    user: User = Depends(get_current_user),
+    profile: Profile = Depends(get_current_user),
 ):
-    return notification_service.get_notifications(user_id=user.id)
+    return notification_service.get_notifications(user_id=profile.id)
